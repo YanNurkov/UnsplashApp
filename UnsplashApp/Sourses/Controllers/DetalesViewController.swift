@@ -82,7 +82,7 @@ class DetailViewController: UIViewController {
     
     lazy var likeButton: UIButton = {
         let obj = UIButton()
-        obj.setImage(UIImage(systemName: "heart"), for: .normal)
+        //obj.setImage(UIImage(systemName: "heart"), for: .normal)
         obj.tintColor = .red
         obj.imageView?.contentMode = .scaleAspectFit
         obj.setPreferredSymbolConfiguration(UIImage.SymbolConfiguration(pointSize: 50), forImageIn: .normal)
@@ -96,8 +96,15 @@ class DetailViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        loadLike()
         fillingData()
+        likeStatus()
         setupLayout()
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        loadLike()
+        likeStatus()
     }
     
     //MARK: - SetupLayout
@@ -168,6 +175,38 @@ class DetailViewController: UIViewController {
     }
     
     //MARK: - Actions
+    
+    func loadLike() {
+        do {
+            likeData = try context.fetch(LikeEntities.fetchRequest())
+            print("Fatch ok")
+        }
+        catch {
+            print("Fetching Failed")
+        }
+    }
+    
+    func likeStatus() {
+        guard let result = result else { return }
+                let query: NSFetchRequest<LikeEntities> = LikeEntities.fetchRequest()
+                let key = result.urls.regular
+
+                let predicate = NSPredicate(format: "pictureURL = %@", key)
+                query.predicate = predicate
+
+                do {
+                    likeData = try context.fetch(query)
+                    print(likeData.count)
+                    if likeData.count == 1 {
+                        likeButton.setImage(UIImage(systemName: "heart.fill"), for: .normal)
+                        
+                    } else {
+                        likeButton.setImage(UIImage(systemName: "heart"), for: .normal)
+                    }
+                } catch {
+                    print("error")
+                }
+    }
     
     @objc func saveLike() {
         if tab == false {

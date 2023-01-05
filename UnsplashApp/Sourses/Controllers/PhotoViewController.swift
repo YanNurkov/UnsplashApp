@@ -62,6 +62,7 @@ extension PhotoViewController {
         let query = keyword.replacingOccurrences(of: "", with: "%10")
         let urlString = baseUrl + "client_id=\(key)&query=\(query)&page=\(currentPage)"
         guard let url = URL(string: urlString) else {
+            alert()
             print("Bad URL")
             return
         }
@@ -148,7 +149,17 @@ extension PhotoViewController: CustomLayoutDelegate {
 
 extension PhotoViewController: UISearchBarDelegate {
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-        guard let text = searchBar.text else { return }
+        guard let text = searchBar.text?.lowercased() else { return }
+         let engCharacters = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890"
+            text.forEach { (char) in
+                if !(engCharacters.contains(char)) {
+                    DispatchQueue.main.async {
+                        self.keyword = "random"
+                        self.alert()
+                        self.collectionView.reloadData()
+                    }
+                }
+            }
         keyword = text
         photoDatas.removeAll()
         currentPage = 1
@@ -169,7 +180,7 @@ extension PhotoViewController {
     
     func updateSearch() {
         search.searchBar.text = ""
-        keyword = "nature"
+        keyword = "random"
         photoDatas.removeAll()
         currentPage = 1
         fetchPhotos()

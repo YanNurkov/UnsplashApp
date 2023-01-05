@@ -15,10 +15,9 @@ class DetalesLikeViewController: UIViewController {
     var likeData: [LikeEntities] = []
     let context = (UIApplication.shared.delegate as!
                    AppDelegate).persistentContainer.viewContext
-    private var uuid: UUID
     var tab: Bool = true
     var result: LikeEntities?
-    
+    var regular = ""
     //MARK: - Outlets
     
     lazy var mainView: UIView = {
@@ -93,8 +92,8 @@ class DetalesLikeViewController: UIViewController {
     }()
     
    //MARK: - Init
-    init (uuid: UUID) {
-        self.uuid = uuid
+    init (id: String) {
+        self.regular = id
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -176,15 +175,16 @@ class DetalesLikeViewController: UIViewController {
         downloadLabel.text = ("\(result.like ?? "")")
         nameLabel.text = result.nameAuthor
         profileView.sd_setImage(with: URL(string: result.profileImage ?? ""), placeholderImage: UIImage(named: "photo"))
-        uuid = result.uuid!
+        regular = result.regular ?? ""
     }
     
     //MARK: - Actions
     
     @objc func deleteLike() {
         let request: NSFetchRequest<LikeEntities> = LikeEntities.fetchRequest()
-        request.predicate = NSPredicate(format: "%K == %@", "uuid", uuid as CVarArg)
+        request.predicate = NSPredicate(format: "%K == %@", "regular", regular as CVarArg)
         guard let result = try? context.fetch(request).first else {return}
+        NotificationCenter.default.post(name: Notification.Name("switchTab"), object: nil)
         context.delete(result)
         try? context.save()
         if tab == false {

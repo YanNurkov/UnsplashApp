@@ -14,9 +14,9 @@ class DetailViewController: UIViewController {
     var likeData: [LikeEntities] = []
     let context = (UIApplication.shared.delegate as!
                    AppDelegate).persistentContainer.viewContext
-    private let uuid = UUID()
-    var tab: Bool = false
+    var tab = Bool()
     var result: PhotosResult?
+    var regular = ""
     
     //MARK: - Outlets
     
@@ -82,7 +82,6 @@ class DetailViewController: UIViewController {
     
     lazy var likeButton: UIButton = {
         let obj = UIButton()
-        //obj.setImage(UIImage(systemName: "heart"), for: .normal)
         obj.tintColor = .red
         obj.imageView?.contentMode = .scaleAspectFit
         obj.setPreferredSymbolConfiguration(UIImage.SymbolConfiguration(pointSize: 50), forImageIn: .normal)
@@ -92,7 +91,7 @@ class DetailViewController: UIViewController {
     }()
     
     //MARK: - LifeCycle
-   
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
@@ -100,6 +99,7 @@ class DetailViewController: UIViewController {
         fillingData()
         likeStatus()
         setupLayout()
+        NotificationCenter.default.addObserver(self, selector: #selector(switchTab), name: Notification.Name("switchTab"), object: nil)
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -172,6 +172,7 @@ class DetailViewController: UIViewController {
         downloadLabel.text = ("\(result.likes)")
         nameLabel.text = result.user.name
         profileView.sd_setImage(with: URL(string: result.user.profileImage.large), placeholderImage: UIImage(named: "photo"))
+        regular = result.id
     }
     
     //MARK: - Actions
@@ -187,25 +188,27 @@ class DetailViewController: UIViewController {
     }
     
     func likeStatus() {
-        guard let result = result else { return }
-                let query: NSFetchRequest<LikeEntities> = LikeEntities.fetchRequest()
-                let key = result.urls.regular
-
-                let predicate = NSPredicate(format: "pictureURL = %@", key)
-                query.predicate = predicate
-
-                do {
-                    likeData = try context.fetch(query)
-                    print(likeData.count)
-                    if likeData.count == 1 {
-                        likeButton.setImage(UIImage(systemName: "heart.fill"), for: .normal)
-                        
-                    } else {
-                        likeButton.setImage(UIImage(systemName: "heart"), for: .normal)
-                    }
-                } catch {
-                    print("error")
-                }
+        let query: NSFetchRequest<LikeEntities> = LikeEntities.fetchRequest()
+        let predicate = NSPredicate(format: "%K == %@", "regular", regular as CVarArg)
+        query.predicate = predicate
+        
+        do {
+            likeData = try context.fetch(query)
+            print(likeData.count)
+            if likeData.count == 0 {
+                likeButton.setImage(UIImage(systemName: "heart"), for: .normal)
+            }
+            if likeData.count == 1 {
+                likeButton.setImage(UIImage(systemName: "heart.fill"), for: .normal)
+            }
+            if likeData.count >= 2 {
+                likeButton.setImage(UIImage(systemName: "heart"), for: .normal)
+                guard let res = try? context.fetch(query).first else {return}
+                context.delete(res)
+            }
+        } catch {
+            print("error")
+        }
     }
     
     @objc func saveLike() {
@@ -222,10 +225,23 @@ class DetailViewController: UIViewController {
                 data.location = result?.user.location
                 data.like = ("\(result?.likes ?? 0)")
                 data.height = Int64(result?.height ?? 300)
-                data.uuid = uuid
-                try context.save()
-                print("saved")
-                print(data)
+                data.addDate = Date()
+                let query: NSFetchRequest<LikeEntities> = LikeEntities.fetchRequest()
+                let predicate = NSPredicate(format: "%K == %@", "regular", regular as CVarArg)
+                query.predicate = predicate
+                likeData = try context.fetch(query)
+                if likeData.count > 1 {
+                    guard let res = try? context.fetch(query).first else {return}
+                    guard let last = try? context.fetch(query).last else {return}
+                    context.delete(last)
+                    context.delete(res)
+                    tab = false
+                    likeButton.setImage(UIImage(systemName: "heart"), for: .normal)
+                    print("jjj")
+                    try context.save()
+                } else {
+                    print(data)
+                }
             } catch {
                 let nserror = error as NSError
                 fatalError("Unresolved error \(nserror), \(nserror.userInfo)")
@@ -234,11 +250,15 @@ class DetailViewController: UIViewController {
             tab = false
             likeButton.setImage(UIImage(systemName: "heart"), for: .normal)
             let request: NSFetchRequest<LikeEntities> = LikeEntities.fetchRequest()
-            request.predicate = NSPredicate(format: "%K == %@", "uuid", uuid as CVarArg)
+            request.predicate = NSPredicate(format: "%K == %@", "regular", regular as CVarArg)
             guard let result = try? context.fetch(request).first else {return}
             context.delete(result)
             try? context.save()
         }
+    }
+    
+    @objc func switchTab() {
+        tab = false
     }
 }
 

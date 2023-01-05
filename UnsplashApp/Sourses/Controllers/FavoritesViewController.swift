@@ -46,12 +46,13 @@ class FavoritesViewController: UIViewController {
     //MARK: - FetchData
     
     func fatch() {
+        let fetchRequest = NSFetchRequest<LikeEntities>(entityName: "LikeEntities")
+        let sort = NSSortDescriptor(key: #keyPath(LikeEntities.addDate), ascending: true)
+        fetchRequest.sortDescriptors = [sort]
         do {
-            likeData = try context.fetch(LikeEntities.fetchRequest())
-            print("Fatch ok")
-        }
-        catch {
-            print("Fetching Failed")
+            likeData = try context.fetch(fetchRequest).reversed()
+        } catch {
+            print("Cannot fetch Expenses")
         }
     }
 }
@@ -77,8 +78,8 @@ extension FavoritesViewController: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         currentResult = likeData[indexPath.row]
-        guard let uuid = likeData[indexPath.row].uuid else {return}
-        let vc = DetalesLikeViewController(uuid: uuid)
+        guard let id = likeData[indexPath.row].regular else {return}
+        let vc = DetalesLikeViewController(id: id)
         guard let result = currentResult else { return }
         vc.result = result
         navigationController?.pushViewController(vc, animated: true)
@@ -86,9 +87,10 @@ extension FavoritesViewController: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
-            let id = likeData[indexPath.row].uuid
+            NotificationCenter.default.post(name: Notification.Name("switchTab"), object: nil)
+            let id = likeData[indexPath.row].regular
             let request: NSFetchRequest<LikeEntities> = LikeEntities.fetchRequest()
-            request.predicate = NSPredicate(format: "%K == %@", "uuid", id! as CVarArg )
+            request.predicate = NSPredicate(format: "%K == %@", "regular", id! as CVarArg )
             guard let result = try? context.fetch(request).first else {return}
             context.delete(result)
             try? context.save()
